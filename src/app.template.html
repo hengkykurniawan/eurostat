@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eurostat Explorer</title>
+<style>
+:root{
+  --bg:#0e1420; --bg-2:#131b2b; --panel:#16203300; --card:#172033; --card-2:#1c2740;
+  --line:#26324b; --line-soft:#1f2a41;
+  --txt:#e8edf7; --txt-2:#a7b3cc; --txt-3:#72809d;
+  --accent:#4f8cff; --accent-2:#2b6be0; --gold:#ffcc33; --good:#31c48d; --bad:#f87171;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --radius:14px;
+  --c1:#4f8cff; --c2:#ffcc33; --c3:#31c48d; --c4:#f472b6; --c5:#a78bfa;
+  --c6:#fb923c; --c7:#22d3ee; --c8:#f87171; --c9:#84cc16; --c10:#c084fc;
+}
+html[data-theme="light"]{
+  --bg:#f4f6fb; --bg-2:#ffffff; --card:#ffffff; --card-2:#f7f9fd;
+  --line:#dde4f0; --line-soft:#e9eef7;
+  --txt:#12192a; --txt-2:#4c5875; --txt-3:#78859f;
+  --accent:#1f5fd0; --accent-2:#164ba8; --gold:#c98f00; --good:#0f9d63; --bad:#d93a3a;
+  --shadow:0 8px 24px rgba(20,32,60,.10);
+  --c1:#1f5fd0; --c2:#c98f00; --c3:#0f9d63; --c4:#d6417f; --c5:#7c4dd6;
+  --c6:#d4680c; --c7:#0891b2; --c8:#d93a3a; --c9:#5b8a09; --c10:#9333ea;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--txt);
+  font:14px/1.5 "Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--txt-3);background-clip:content-box}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex;align-items:center;gap:14px;padding:10px 18px;
+  background:linear-gradient(180deg,var(--bg-2),var(--bg));
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:.2px;white-space:nowrap}
+.brand .stars{
+  width:30px;height:30px;border-radius:9px;background:#003399;
+  display:grid;place-items:center;color:#ffcc00;font-size:15px;line-height:1;box-shadow:var(--shadow)
+}
+.brand small{display:block;font-weight:450;color:var(--txt-3);font-size:11px;letter-spacing:.3px}
+.spacer{flex:1}
+.tbtn{
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:7px 12px;cursor:pointer;color:var(--txt-2);transition:.15s;white-space:nowrap
+}
+.tbtn:hover{border-color:var(--accent);color:var(--txt)}
+.tbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:340px 1fr;gap:0;height:calc(100vh - 53px)}
+aside{
+  border-right:1px solid var(--line);background:var(--bg-2);
+  display:flex;flex-direction:column;min-height:0
+}
+main{overflow:auto;min-width:0;padding:20px 22px 60px}
+
+/* ---------- sidebar ---------- */
+.search-wrap{padding:14px 14px 10px;border-bottom:1px solid var(--line-soft)}
+.search{position:relative}
+.search input{
+  width:100%;padding:11px 12px 11px 34px;border-radius:11px;
+  border:1px solid var(--line);background:var(--card);outline:none;transition:.15s
+}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,140,255,.15)}
+.search svg{position:absolute;left:11px;top:11px;opacity:.5}
+.hint{color:var(--txt-3);font-size:11.5px;margin-top:8px;display:flex;justify-content:space-between;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+.chip{
+  font-size:11.5px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);
+  background:var(--card);color:var(--txt-2);cursor:pointer;transition:.15s
+}
+.chip:hover{color:var(--txt);border-color:var(--txt-3)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.results{overflow:auto;flex:1;padding:6px 8px 20px}
+.res{
+  padding:9px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.12s
+}
+.res:hover{background:var(--card);border-color:var(--line-soft)}
+.res.on{background:var(--card);border-color:var(--accent)}
+.res .t{font-size:13px;line-height:1.35;margin-bottom:3px}
+.res .m{font-size:11px;color:var(--txt-3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.code{
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:10.5px;
+  background:var(--card-2);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;color:var(--txt-2)
+}
+mark{background:rgba(255,204,51,.28);color:inherit;border-radius:3px;padding:0 1px}
+.sec-title{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.9px;color:var(--txt-3);
+  padding:12px 12px 6px;font-weight:600
+}
+
+/* ---------- workspace ---------- */
+.hero{max-width:900px;margin:26px auto}
+.hero h1{font-size:27px;margin:0 0 8px;letter-spacing:-.4px}
+.hero p{color:var(--txt-2);margin:0 0 22px;max-width:620px}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:12px}
+.fcard{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px;cursor:pointer;transition:.15s;position:relative;overflow:hidden
+}
+.fcard:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.fcard .ic{font-size:19px;margin-bottom:8px;display:block}
+.fcard .t{font-weight:600;font-size:13.5px;margin-bottom:4px}
+.fcard .d{font-size:11.5px;color:var(--txt-3);line-height:1.4}
+
+.dshead{margin-bottom:16px}
+.dshead h2{font-size:19px;margin:0 0 8px;line-height:1.32;letter-spacing:-.2px;max-width:900px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--txt-3)}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;margin-bottom:16px
+}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.field label{display:block;font-size:11px;color:var(--txt-3);margin-bottom:5px;font-weight:600;letter-spacing:.3px}
+.field select,.field input{
+  width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--line);
+  background:var(--card-2);outline:none;transition:.15s
+}
+.field select:focus,.field input:focus{border-color:var(--accent)}
+
+.geo-box{margin-top:14px;border-top:1px solid var(--line-soft);padding-top:12px}
+.geo-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.geo-head .lbl{font-size:11px;color:var(--txt-3);font-weight:600;letter-spacing:.3px}
+.geo-list{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:2px;
+  max-height:186px;overflow:auto;padding-right:4px
+}
+.geo-item{
+  display:flex;align-items:center;gap:7px;padding:4px 7px;border-radius:7px;cursor:pointer;font-size:12.2px
+}
+.geo-item:hover{background:var(--card-2)}
+.geo-item input{accent-color:var(--accent);margin:0;cursor:pointer}
+.geo-item .agg{font-size:9.5px;color:var(--gold);border:1px solid var(--line);border-radius:4px;padding:0 3px}
+.geo-item span.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.tab{
+  padding:7px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);
+  cursor:pointer;color:var(--txt-2);font-size:13px;transition:.15s
+}
+.tab:hover{color:var(--txt)}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+
+.viewbox{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px 18px;min-height:340px;position:relative
+}
+.chart-title{font-size:13px;color:var(--txt-2);margin-bottom:2px}
+.chart-sub{font-size:11.5px;color:var(--txt-3);margin-bottom:10px}
+svg.chart{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:12px;font-size:12px}
+.legend .li{display:flex;align-items:center;gap:6px;cursor:pointer;opacity:.95;transition:.15s}
+.legend .li.off{opacity:.32}
+.legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.legend .vv{color:var(--txt-3);font-variant-numeric:tabular-nums}
+
+table.data{width:100%;border-collapse:collapse;font-size:12.5px}
+table.data th{
+  text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);color:var(--txt-3);
+  font-size:11px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:var(--card);z-index:2
+}
+table.data td{padding:6px 9px;border-bottom:1px solid var(--line-soft)}
+table.data td.num{text-align:right;font-variant-numeric:tabular-nums}
+table.data tr:hover td{background:var(--card-2)}
+.tablewrap{max-height:520px;overflow:auto;border:1px solid var(--line-soft);border-radius:10px}
+
+.dlbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.dl{
+  background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;
+  cursor:pointer;color:var(--txt-2);font-size:12.5px;transition:.15s;display:flex;gap:6px;align-items:center
+}
+.dl:hover{border-color:var(--accent);color:var(--txt)}
+.dl.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.dl.primary:hover{background:var(--accent-2)}
+
+.status{font-size:12.5px;color:var(--txt-3);margin:10px 0 0;min-height:18px}
+.err{
+  background:rgba(248,113,113,.09);border:1px solid rgba(248,113,113,.4);color:var(--bad);
+  border-radius:10px;padding:11px 13px;font-size:12.5px;margin-top:12px;line-height:1.5
+}
+.warn{
+  background:rgba(255,204,51,.09);border:1px solid rgba(255,204,51,.35);color:var(--gold);
+  border-radius:10px;padding:10px 13px;font-size:12.3px;margin-top:12px
+}
+.spin{
+  width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-3px;margin-right:7px
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.skel{background:linear-gradient(90deg,var(--card-2),var(--line-soft),var(--card-2));
+  background-size:200% 100%;animation:sh 1.3s infinite;border-radius:8px;height:12px;margin:8px 0}
+@keyframes sh{to{background-position:-200% 0}}
+.tip{
+  position:fixed;pointer-events:none;background:var(--bg-2);border:1px solid var(--line);
+  border-radius:10px;padding:9px 11px;font-size:12px;box-shadow:var(--shadow);z-index:70;
+  opacity:0;transition:opacity .1s;max-width:290px
+}
+.tip .th{font-weight:650;margin-bottom:5px;font-size:12px}
+.tip .tr{display:flex;justify-content:space-between;gap:14px;line-height:1.6}
+.tip .tr b{font-variant-numeric:tabular-nums;font-weight:600}
+.empty-note{color:var(--txt-3);text-align:center;padding:70px 20px;font-size:13px}
+.foot{color:var(--txt-3);font-size:11.5px;margin-top:22px;line-height:1.6}
+@media(max-width:940px){
+  .layout{grid-template-columns:1fr;height:auto}
+  aside{border-right:none;border-bottom:1px solid var(--line);max-height:52vh}
+  main{padding:16px 14px 50px}
+  .brand small{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="stars">★</div>
+    <div>Eurostat Explorer<small>Live data from the EU statistical database</small></div>
+  </div>
+  <div class="spacer"></div>
+  <button class="tbtn" id="btnFav" title="Show saved datasets">☆ Saved</button>
+  <button class="tbtn" id="btnTheme" title="Toggle light / dark">◐ Theme</button>
+  <a class="tbtn" href="https://ec.europa.eu/eurostat/data/database" target="_blank" rel="noopener">Eurostat ↗</a>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="search-wrap">
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+        </svg>
+        <input id="q" placeholder="Search 10,000+ datasets…  e.g. inflation, gdp, une_rt_m" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="hint"><span id="qcount">Loading catalogue…</span><span id="qbuilt"></span></div>
+    </div>
+    <div class="chips" id="themeChips"></div>
+    <div class="results" id="results"></div>
+  </aside>
+
+  <main id="main">
+    <div class="hero" id="hero">
+      <h1>Explore European statistics</h1>
+      <p>Search the full Eurostat database, filter any dataset by indicator, unit, country and period, then chart it and download the numbers as CSV or JSON. Data is fetched live from Eurostat's dissemination API each time you load a dataset.</p>
+      <div class="sec-title" style="padding-left:0">Popular starting points</div>
+      <div class="grid-cards" id="featured"></div>
+      <div class="foot">
+        Source: Eurostat dissemination API. Nothing is stored on a server — the app runs entirely in your browser
+        and calls <span class="code">ec.europa.eu/eurostat/api</span> directly.
+      </div>
+    </div>
+    <div id="ds" hidden></div>
+  </main>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const CATALOG_B64 = "__CATALOG_B64__";
+</script>
+<script>
+"use strict";
+/* ============================================================
+   Eurostat Explorer — single-file dashboard
+   API docs: https://wikis.ec.europa.eu/display/EUROSTATHELP
+   ============================================================ */
+const API   = "https://ec.europa.eu/eurostat/api/dissemination";
+const $     = (s, r = document) => r.querySelector(s);
+const $$    = (s, r = document) => [...r.querySelectorAll(s)];
+const COLORS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8","--c9","--c10"]
+  .map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- small helpers ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const fmtNum = (v, d) => v == null || Number.isNaN(v) ? "–" :
+  Math.abs(v) >= 1e4 ? v.toLocaleString("en-GB", { maximumFractionDigits: 0 })
+                     : v.toLocaleString("en-GB", { maximumFractionDigits: d ?? 2 });
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem("estat." + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("estat." + k, JSON.stringify(v)); } catch {} }
+};
+
+/* ---------- state ---------- */
+const S = {
+  catalog: null, index: null, byCode: new Map(),
+  themeFilter: null, showSaved: false,
+  ds: null,            // {code,title,updated,start,end,values,theme}
+  dims: [],            // [{id,label,codes:[],labels:{}}]
+  sel: {},             // dimId -> code | [codes] for geo
+  from: null, to: null,
+  rows: [], series: [], periods: [],
+  tab: "trend", hidden: new Set(),
+  lastURL: "", loading: false
+};
+
+const AGG_RX = /^(EU\d|EU2[78]|EA\d|EEA|EFTA|EU_V|EU$|EA$)/i;
+const PRESETS = {
+  "EU27": ["BE","BG","CZ","DK","DE","EE","IE","EL","ES","FR","HR","IT","CY","LV","LT","LU","HU","MT","NL","AT","PL","PT","RO","SI","SK","FI","SE"],
+  "Euro area": ["BE","DE","EE","IE","EL","ES","FR","HR","IT","CY","LV","LT","LU","MT","NL","AT","PT","SI","SK","FI"],
+  "Big 5": ["DE","FR","IT","ES","PL"],
+  "Nordics": ["DK","FI","SE","NO","IS"],
+  "Aggregates": ["EU27_2020","EA20","EA19","EU28"]
+};
+/* preferred default codes per dimension (first match wins).
+   Rates and per-capita measures come before absolute levels: they compare across
+   countries without being dominated by country size. */
+const PREF = {
+  unit: ["PC_ACT","PC","RCH_A","RT","PC_POP","YR","EUR_HAB","CP_MEUR","MIO_EUR","MIO_NAC",
+         "NR","THS_PER","THS_T","BAL","PC_GDP","I15","I20"],
+  na_item: ["B1GQ"], sex: ["T","TOTAL"], age: ["TOTAL","Y_GE15","Y15-74","Y_GE16"],
+  s_adj: ["SA","SCA","NSA"], coicop: ["CP00"], nace_r2: ["TOTAL","B-E36"],
+  isced11: ["TOTAL"], citizen: ["TOTAL"], c_birth: ["TOTAL"],
+  sector: ["S13","TOTAL"], sectperf: ["TOTAL"], wstatus: ["TOTAL"],
+  statinfo: ["MED_EI"], rskpovth: ["B_60"], airpol: ["GHG"], freq: ["A","Q","M"]
+};
+/* headline selections for the datasets on the start page — a good first view */
+const DEFAULTS = {
+  nama_10_gdp:    { unit:"CP_MEUR", na_item:"B1GQ" },
+  gov_10dd_edpt1: { unit:"PC_GDP", sector:"S13", na_item:"B9" },
+  une_rt_m:       { unit:"PC_ACT", s_adj:"SA", age:"TOTAL", sex:"T" },
+  demo_mlexpec:   { sex:"T", age:"Y_LT1" },
+  rd_e_gerdtot:   { unit:"EUR_HAB", sectperf:"TOTAL" },
+  env_air_gge:    { unit:"MIO_T", airpol:"GHG", src_crf:"TOTXMEMO" },
+  ilc_li02:       { unit:"PC", rskpovth:"B_60", statinfo:"MED_EI", age:"TOTAL", sex:"T" },
+  ei_bsco_m:      { indic:"BS-CSMCI", s_adj:"SA" }
+};
+
+const FEATURED = [
+  { c:"nama_10_gdp",    i:"📈", t:"GDP and main components",     d:"Annual national accounts — output, expenditure, income" },
+  { c:"une_rt_m",       i:"👥", t:"Unemployment rate",           d:"Monthly rate by sex and age" },
+  { c:"prc_hicp_manr",  i:"🛒", t:"Inflation (HICP)",            d:"Annual rate of change, monthly data" },
+  { c:"demo_pjan",      i:"🌍", t:"Population on 1 January",     d:"By age and sex" },
+  { c:"gov_10dd_edpt1", i:"🏛️", t:"Government deficit and debt", d:"EDP reporting, annual" },
+  { c:"demo_mlexpec",   i:"❤️", t:"Life expectancy",             d:"By age and sex" },
+  { c:"rd_e_gerdtot",   i:"🔬", t:"R&D expenditure",             d:"Gross domestic expenditure on R&D" },
+  { c:"nrg_ind_ren",    i:"⚡", t:"Renewable energy share",      d:"Share of energy from renewable sources" },
+  { c:"env_air_gge",    i:"🌱", t:"Greenhouse gas emissions",    d:"By source sector" },
+  { c:"ilc_li02",       i:"⚖️", t:"At-risk-of-poverty rate",     d:"By poverty threshold, age and sex" },
+  { c:"tps00001",       i:"📊", t:"Population change",           d:"Demographic balance and crude rates" },
+  { c:"ei_bsco_m",      i:"🧭", t:"Consumer confidence",         d:"Business and consumer surveys, monthly" }
+];
+
+/* ============================================================
+   catalogue
+   ============================================================ */
+async function loadCatalog() {
+  const bin = Uint8Array.from(atob(CATALOG_B64), c => c.charCodeAt(0));
+  let text;
+  if ("DecompressionStream" in window) {
+    const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));
+    text = await new Response(stream).text();
+  } else {
+    throw new Error("This browser cannot decompress the bundled catalogue. Use a recent Chrome, Edge or Firefox.");
+  }
+  const cat = JSON.parse(text);
+  const seen = new Map();
+  for (const it of cat.items) {
+    const [code, title, theme, updated, start, end, values] = it;
+    if (seen.has(code)) continue;
+    seen.set(code, { code, title, theme: cat.themes[theme] || "", updated, start, end, values });
+  }
+  S.catalog = cat;
+  S.byCode = seen;
+  S.index = [...seen.values()].map(d => ({ d, hay: (d.code + " " + d.title).toLowerCase() }));
+  $("#qcount").textContent = seen.size.toLocaleString("en-GB") + " datasets";
+  $("#qbuilt").textContent = "catalogue " + cat.built;
+}
+
+function topThemes() {
+  const counts = new Map();
+  for (const { d } of S.index) {
+    const parts = d.theme.split(" > ");
+    const t = parts[1] || parts[0] || "Other";
+    counts.set(t, (counts.get(t) || 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, 9);
+}
+
+function renderChips() {
+  const box = $("#themeChips");
+  box.innerHTML = topThemes().map(([t, n]) =>
+    `<button class="chip${S.themeFilter === t ? " on" : ""}" data-t="${esc(t)}">${esc(shortTheme(t))} <span style="opacity:.6">${n}</span></button>`
+  ).join("");
+  $$(".chip", box).forEach(c => c.onclick = () => {
+    S.themeFilter = S.themeFilter === c.dataset.t ? null : c.dataset.t;
+    renderChips(); runSearch();
+  });
+}
+const shortTheme = t => t
+  .replace("General and regional statistics", "Regional")
+  .replace("Economy and finance", "Economy")
+  .replace("Population and social conditions", "Population")
+  .replace("Industry, trade and services", "Industry")
+  .replace("Agriculture, forestry and fisheries", "Agriculture")
+  .replace("International trade", "Trade")
+  .replace("Science, technology, digital society", "Science & tech")
+  .replace("Environment and energy", "Environment")
+  .replace("Transport", "Transport");
+
+function scoreOf(d, hay, tokens, raw) {
+  if (d.code === raw) return 1000;
+  let sc = 0;
+  for (const tk of tokens) {
+    const iC = d.code.indexOf(tk), iT = d.title.toLowerCase().indexOf(tk);
+    if (iC < 0 && iT < 0) return -1;
+    if (iC === 0) sc += 60; else if (iC > 0) sc += 25;
+    if (iT === 0) sc += 40; else if (iT > 0) sc += 20 - Math.min(15, iT / 12);
+  }
+  sc += Math.min(12, Math.log10(Math.max(10, d.values || 10)) * 1.6);   // richer datasets first
+  if (d.title.length < 60) sc += 3;
+  return sc;
+}
+
+function runSearch() {
+  const raw = $("#q").value.trim().toLowerCase();
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  const box = $("#results");
+  const favs = store.get("favs", []);
+
+  let list;
+  if (S.showSaved) {
+    list = favs.map(c => S.byCode.get(c)).filter(Boolean).map(d => ({ d, sc: 0 }));
+    if (!list.length) { box.innerHTML = `<div class="empty-note">No saved datasets yet.<br>Open one and press ☆ to save it.</div>`; return; }
+  } else if (!tokens.length && !S.themeFilter) {
+    const recents = store.get("recent", []).map(c => S.byCode.get(c)).filter(Boolean);
+    box.innerHTML =
+      (recents.length ? `<div class="sec-title">Recently opened</div>` + recents.slice(0, 6).map(rowHTML).join("") : "") +
+      `<div class="sec-title">Popular datasets</div>` +
+      FEATURED.map(f => S.byCode.get(f.c)).filter(Boolean).map(rowHTML).join("");
+    bindRows(box); return;
+  } else {
+    list = [];
+    for (const { d, hay } of S.index) {
+      if (S.themeFilter && !d.theme.includes(S.themeFilter)) continue;
+      const sc = tokens.length ? scoreOf(d, hay, tokens, raw) : 1 + Math.min(12, Math.log10(Math.max(10, d.values || 10)));
+      if (sc < 0) continue;
+      list.push({ d, sc });
+    }
+    list.sort((a, b) => b.sc - a.sc);
+  }
+
+  const total = list.length;
+  box.innerHTML =
+    `<div class="sec-title">${S.showSaved ? "Saved" : total.toLocaleString("en-GB") + " match" + (total === 1 ? "" : "es")}</div>` +
+    (total ? list.slice(0, 300).map(x => rowHTML(x.d, tokens)).join("")
+           : `<div class="empty-note">Nothing found.<br>Try fewer or different words.</div>`) +
+    (total > 300 ? `<div class="empty-note" style="padding:14px">…${(total - 300).toLocaleString("en-GB")} more — refine your search</div>` : "");
+  bindRows(box);
+}
+
+function hl(text, tokens) {
+  if (!tokens || !tokens.length) return esc(text);
+  let out = esc(text);
+  for (const tk of [...tokens].sort((a, b) => b.length - a.length)) {
+    if (tk.length < 2) continue;
+    out = out.replace(new RegExp("(" + tk.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig"), "<mark>$1</mark>");
+  }
+  return out;
+}
+const rowHTML = (d, tokens) => `
+  <div class="res${S.ds && S.ds.code === d.code ? " on" : ""}" data-c="${esc(d.code)}">
+    <div class="t">${hl(d.title, tokens)}</div>
+    <div class="m">
+      <span class="code">${hl(d.code, tokens)}</span>
+      ${d.start ? `<span>${esc(d.start)}–${esc(d.end)}</span>` : ""}
+      ${d.updated ? `<span>upd ${esc(d.updated)}</span>` : ""}
+    </div>
+  </div>`;
+function bindRows(box) {
+  $$(".res", box).forEach(r => r.onclick = () => openDataset(r.dataset.c));
+}
+
+/* ============================================================
+   Eurostat API
+   ============================================================ */
+async function getJSON(url) {
+  const r = await fetch(url);
+  const txt = await r.text();
+  let j = null;
+  try { j = JSON.parse(txt); } catch {}
+  if (!r.ok || (j && j.error)) {
+    const e = j && j.error && j.error[0];
+    throw new Error(e ? `${e.label} (status ${e.status})` : `HTTP ${r.status} — ${txt.slice(0, 160)}`);
+  }
+  return j;
+}
+
+/** allowed codes per dimension, from the SDMX content constraint (small + fast) */
+async function fetchDims(code) {
+  const url = `${API}/sdmx/2.1/contentconstraint/ESTAT/${code.toUpperCase()}?compressed=false`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Could not read the structure of "${code}" (HTTP ${r.status}).`);
+  const doc = new DOMParser().parseFromString(await r.text(), "application/xml");
+  if (doc.querySelector("parsererror")) throw new Error("Malformed structure response from Eurostat.");
+  const kvs = [...doc.getElementsByTagNameNS("*", "KeyValue")];
+  if (!kvs.length) throw new Error(`No dimension information published for "${code}".`);
+  return kvs.map(kv => ({
+    id: kv.getAttribute("id"),
+    label: kv.getAttribute("id"),
+    codes: [...kv.getElementsByTagNameNS("*", "Value")].map(v => v.textContent.trim()),
+    labels: {}
+  }));
+}
+
+/** one (or a few) tiny queries that return human labels for every dimension */
+async function fetchLabels(code, dims) {
+  const nonTime = dims.filter(d => !isTime(d.id));
+  const cells = nonTime.reduce((a, d) => a * d.codes.length, 1);
+  const apply = js => {
+    for (const id of js.id) {
+      const dim = dims.find(d => d.id.toLowerCase() === id.toLowerCase() || (isTime(d.id) && isTime(id)));
+      if (!dim) continue;
+      const lab = js.dimension[id];
+      if (lab.label) dim.label = lab.label;
+      Object.assign(dim.labels, lab.category.label || {});
+    }
+  };
+  try {
+    if (cells <= 60000) {
+      apply(await getJSON(`${API}/statistics/1.0/data/${code}?format=JSON&lang=EN&lastTimePeriod=1`));
+    } else {
+      // free one dimension at a time, pin the others to their first code
+      const big = nonTime.filter(d => d.codes.length > 1);
+      const probes = big.map(free => {
+        const p = new URLSearchParams({ format: "JSON", lang: "EN", lastTimePeriod: "1" });
+        for (const d of big) if (d !== free) p.append(d.id, d.codes[0]);
+        return getJSON(`${API}/statistics/1.0/data/${code}?${p}`).catch(() => null);
+      });
+      (await Promise.all(probes)).forEach(js => js && apply(js));
+    }
+  } catch (e) { /* labels are a nicety — codes still work */ }
+  return dims;
+}
+
+const isTime = id => /^(time|time_period)$/i.test(id);
+const isGeo  = id => /^geo$/i.test(id);
+
+function parseJsonStat(js) {
+  const ids = js.id, sizes = js.size;
+  const dims = ids.map(id => {
+    const d = js.dimension[id], idx = d.category.index;
+    const codes = Array.isArray(idx) ? idx.slice()
+      : Object.keys(idx).sort((a, b) => idx[a] - idx[b]);
+    return { id, label: d.label || id, codes, labels: (d.category.label || {}) };
+  });
+  const strides = new Array(ids.length);
+  for (let i = ids.length - 1, acc = 1; i >= 0; i--) { strides[i] = acc; acc *= sizes[i]; }
+
+  const vals = js.value || {}, stat = js.status || {};
+  const rows = [];
+  const push = (flat, v) => {
+    if (v == null) return;
+    const rec = { v: typeof v === "number" ? v : Number(v), flag: stat[flat] || "", dim: {} };
+    for (let i = 0; i < dims.length; i++) rec.dim[dims[i].id] = dims[i].codes[Math.floor(flat / strides[i]) % sizes[i]];
+    rows.push(rec);
+  };
+  if (Array.isArray(vals)) vals.forEach((v, i) => push(i, v));
+  else for (const k in vals) push(+k, vals[k]);
+  return { dims, rows, label: js.label, updated: js.updated };
+}
+
+/* ============================================================
+   dataset workspace
+   ============================================================ */
+async function openDataset(code, fromHash) {
+  const d = S.byCode.get(code) || { code, title: code, theme: "", start: "", end: "", updated: "" };
+  S.ds = d; S.dims = []; S.sel = {}; S.hidden = new Set();
+  $("#hero").hidden = true; $("#ds").hidden = false;
+  $("#main").scrollTop = 0;
+  $$(".res").forEach(r => r.classList.toggle("on", r.dataset.c === code));
+
+  const recent = [code, ...store.get("recent", []).filter(c => c !== code)].slice(0, 8);
+  store.set("recent", recent);
+
+  $("#ds").innerHTML = `
+    <div class="dshead">
+      <h2>${esc(d.title)}</h2>
+      <div class="meta">
+        <span class="pill code">${esc(code)}</span>
+        ${d.start ? `<span class="pill">${esc(d.start)} – ${esc(d.end)}</span>` : ""}
+        ${d.updated ? `<span class="pill">updated ${esc(d.updated)}</span>` : ""}
+        ${d.values ? `<span class="pill">${(+d.values).toLocaleString("en-GB")} values</span>` : ""}
+        <button class="tbtn" id="btnSave" style="padding:3px 10px;font-size:11.5px">☆ Save</button>
+        <a class="pill" href="https://ec.europa.eu/eurostat/databrowser/view/${encodeURIComponent(code)}/default/table"
+           target="_blank" rel="noopener">Open on Eurostat ↗</a>
+      </div>
+      ${d.theme ? `<div class="meta" style="margin-top:6px"><span style="opacity:.75">${esc(d.theme)}</span></div>` : ""}
+    </div>
+    <div class="panel" id="ctrlPanel">
+      <div class="skel" style="width:40%"></div><div class="skel" style="width:75%"></div><div class="skel" style="width:60%"></div>
+      <div class="status"><span class="spin"></span>Reading dataset structure…</div>
+    </div>`;
+
+  $("#btnSave").onclick = toggleFav; syncFavBtn();
+
+  try {
+    const dims = await fetchDims(code);
+    await fetchLabels(code, dims);
+    S.dims = dims;
+    presetSelections(fromHash);
+    renderControls();
+    renderShell();
+    loadData();
+  } catch (e) {
+    $("#ctrlPanel").innerHTML = `<div class="err"><b>Could not open this dataset.</b><br>${esc(e.message)}</div>`;
+  }
+}
+
+function presetSelections(fromHash) {
+  const hash = fromHash || {};
+  const timeDim = S.dims.find(d => isTime(d.id));
+  for (const d of S.dims) {
+    if (isTime(d.id)) continue;
+    if (isGeo(d.id)) {
+      let want = (hash.geo || "").split(",").filter(c => d.codes.includes(c));
+      if (!want.length) {
+        want = PRESETS["Big 5"].filter(c => d.codes.includes(c));
+        const agg = d.codes.find(c => c === "EU27_2020") || d.codes.find(c => AGG_RX.test(c));
+        if (agg) want = [agg, ...want];
+        if (!want.length) want = d.codes.slice(0, 5);
+      }
+      S.sel[d.id] = want.slice(0, 12);
+      continue;
+    }
+    const pref = PREF[d.id.toLowerCase()] || [];
+    const dflt = (DEFAULTS[S.ds.code] || {})[d.id.toLowerCase()];
+    S.sel[d.id] = (hash[d.id] && d.codes.includes(hash[d.id]) ? hash[d.id] : null)
+      || (d.codes.includes(dflt) ? dflt : null)
+      || pref.find(c => d.codes.includes(c))
+      || d.codes.find(c => /^(TOTAL|T|TOT)$/i.test(c))
+      || d.codes[0];
+  }
+  const per = timeDim ? timeDim.codes : [];
+  const n = per.length;
+  const span = /-(Q|W)?\d/.test(per[n - 1] || "") ? (per[n - 1].includes("Q") ? 28 : 48) : 20;
+  S.from = (hash.from && per.includes(hash.from)) ? hash.from : per[Math.max(0, n - span)] || "";
+  S.to   = (hash.to   && per.includes(hash.to))   ? hash.to   : per[n - 1] || "";
+  if (hash.tab) S.tab = hash.tab;
+}
+
+function renderControls() {
+  const timeDim = S.dims.find(d => isTime(d.id));
+  const geoDim  = S.dims.find(d => isGeo(d.id));
+  const others  = S.dims.filter(d => !isTime(d.id) && !isGeo(d.id));
+  const choose  = others.filter(d => d.codes.length > 1);   // real choices
+  const fixed   = others.filter(d => d.codes.length === 1);  // only one value — just state it
+  const opt = (d, c) => `<option value="${esc(c)}"${S.sel[d.id] === c ? " selected" : ""}>${esc(d.labels[c] || c)}</option>`;
+
+  const html = `
+    ${fixed.length ? `<div class="meta" style="margin-bottom:12px">${fixed.map(d =>
+      `<span class="pill">${esc(d.label || d.id)}: <b style="font-weight:600">${esc(d.labels[S.sel[d.id]] || S.sel[d.id])}</b></span>`).join("")}</div>` : ""}
+    <div class="ctrls">
+      ${choose.map(d => `
+        <div class="field">
+          <label>${esc(d.label || d.id)} · ${d.codes.length}</label>
+          <select data-dim="${esc(d.id)}">${d.codes.map(c => opt(d, c)).join("")}</select>
+        </div>`).join("")}
+      ${timeDim ? `
+        <div class="field">
+          <label>From</label>
+          <select id="selFrom">${timeDim.codes.map(c => `<option${c === S.from ? " selected" : ""}>${esc(c)}</option>`).join("")}</select>
+        </div>
+        <div class="field">
+          <label>To</label>
+          <select id="selTo">${timeDim.codes.map(c => `<option${c === S.to ? " selected" : ""}>${esc(c)}</option>`).join("")}</select>
+        </div>` : ""}
+    </div>
+    ${geoDim ? `
+    <div class="geo-box">
+      <div class="geo-head">
+        <span class="lbl">${esc(geoDim.label || "Geography")} · <span id="geoCount">${S.sel[geoDim.id].length}</span> selected</span>
+        <div class="spacer" style="flex:1"></div>
+        ${Object.keys(PRESETS).map(p => `<button class="chip" data-preset="${esc(p)}">${esc(p)}</button>`).join("")}
+        <button class="chip" data-preset="__none">Clear</button>
+      </div>
+      <div class="geo-list">
+        ${geoDim.codes.map(c => `
+          <label class="geo-item" title="${esc(geoDim.labels[c] || c)}">
+            <input type="checkbox" value="${esc(c)}"${S.sel[geoDim.id].includes(c) ? " checked" : ""}>
+            <span class="nm">${esc(geoDim.labels[c] || c)}</span>
+            ${AGG_RX.test(c) ? '<span class="agg">agg</span>' : ""}
+          </label>`).join("")}
+      </div>
+    </div>` : ""}
+    <div class="status" id="ctrlStatus"></div>`;
+  $("#ctrlPanel").innerHTML = html;
+
+  $$("#ctrlPanel select[data-dim]").forEach(s => s.onchange = () => { S.sel[s.dataset.dim] = s.value; loadData(); });
+  if (timeDim) {
+    $("#selFrom").onchange = e => { S.from = e.target.value; if (S.from > S.to) { S.to = S.from; $("#selTo").value = S.to; } loadData(); };
+    $("#selTo").onchange   = e => { S.to = e.target.value; if (S.to < S.from) { S.from = S.to; $("#selFrom").value = S.from; } loadData(); };
+  }
+  if (geoDim) {
+    const applyGeo = debounce(() => loadData(), 350);
+    $$(".geo-list input").forEach(cb => cb.onchange = () => {
+      const cur = new Set(S.sel[geoDim.id]);
+      cb.checked ? cur.add(cb.value) : cur.delete(cb.value);
+      S.sel[geoDim.id] = [...cur];
+      $("#geoCount").textContent = cur.size;
+      applyGeo();
+    });
+    $$("#ctrlPanel .chip[data-preset]").forEach(b => b.onclick = () => {
+      const p = b.dataset.preset;
+      S.sel[geoDim.id] = p === "__none" ? [] : PRESETS[p].filter(c => geoDim.codes.includes(c));
+      $$(".geo-list input").forEach(cb => cb.checked = S.sel[geoDim.id].includes(cb.value));
+      $("#geoCount").textContent = S.sel[geoDim.id].length;
+      loadData();
+    });
+  }
+}
+
+function renderShell() {
+  if (!$("#viewArea")) {
+    $("#ds").insertAdjacentHTML("beforeend", `
+      <div class="tabs" id="tabs">
+        <button class="tab" data-tab="trend">Trend over time</button>
+        <button class="tab" data-tab="compare">Compare countries</button>
+        <button class="tab" data-tab="table">Data table</button>
+        <div style="flex:1"></div>
+        <span class="status" id="loadStatus" style="margin:0"></span>
+      </div>
+      <div class="viewbox" id="viewArea"></div>
+      <div class="dlbar">
+        <button class="dl primary" id="dlCsv">⤓ CSV</button>
+        <button class="dl" id="dlJson">⤓ JSON</button>
+        <button class="dl" id="dlPng">⤓ Chart PNG</button>
+        <button class="dl" id="dlUrl">⧉ Copy API URL</button>
+        <button class="dl" id="dlLink">⧉ Copy shareable link</button>
+        <span class="status" id="dlNote" style="margin:0 0 0 6px"></span>
+      </div>
+      <div class="foot" id="dsFoot"></div>`);
+    $$("#tabs .tab").forEach(t => t.onclick = () => { S.tab = t.dataset.tab; syncTabs(); renderView(); writeHash(); });
+    $("#dlCsv").onclick  = downloadCSV;
+    $("#dlJson").onclick = downloadJSON;
+    $("#dlPng").onclick  = downloadPNG;
+    $("#dlUrl").onclick  = () => copy(S.lastURL, "API URL copied");
+    $("#dlLink").onclick = () => copy(location.href, "Link copied");
+  }
+  syncTabs();
+}
+const syncTabs = () => $$("#tabs .tab").forEach(t => t.classList.toggle("on", t.dataset.tab === S.tab));
+
+/* ---------- data loading ---------- */
+function buildURL() {
+  const p = new URLSearchParams({ format: "JSON", lang: "EN" });
+  for (const d of S.dims) {
+    if (isTime(d.id)) continue;
+    const v = S.sel[d.id];
+    if (Array.isArray(v)) v.forEach(c => p.append(d.id, c));
+    else if (v) p.append(d.id, v);
+  }
+  if (S.from) p.append("sinceTimePeriod", S.from);
+  if (S.to)   p.append("untilTimePeriod", S.to);
+  return `${API}/statistics/1.0/data/${S.ds.code}?${p}`;
+}
+
+let loadToken = 0;
+async function loadData() {
+  const my = ++loadToken;
+  const geoDim = S.dims.find(d => isGeo(d.id));
+  if (geoDim && !S.sel[geoDim.id].length) {
+    S.rows = []; S.series = []; S.periods = [];
+    $("#viewArea").innerHTML = `<div class="empty-note">Pick at least one country or region above.</div>`;
+    return;
+  }
+  const url = S.lastURL = buildURL();
+  writeHash();
+  $("#loadStatus").innerHTML = `<span class="spin"></span>Fetching…`;
+  try {
+    const js = await getJSON(url);
+    if (my !== loadToken) return;
+    const parsed = parseJsonStat(js);
+    S.parsed = parsed;
+    buildSeries(parsed);
+    $("#loadStatus").textContent = `${S.rows.length.toLocaleString("en-GB")} values`;
+    $("#dsFoot").innerHTML =
+      `Source: Eurostat, dataset <span class="code">${esc(S.ds.code)}</span>${parsed.updated ? ` · data version ${esc(String(parsed.updated).slice(0, 10))}` : ""}. ` +
+      `Flags: p = provisional, e = estimated, b = break in series, d = definition differs, u = low reliability.`;
+    renderView();
+  } catch (e) {
+    if (my !== loadToken) return;
+    $("#loadStatus").textContent = "";
+    $("#viewArea").innerHTML = `<div class="err"><b>Eurostat could not return this selection.</b><br>${esc(e.message)}
+      <br><br>Try a shorter period, fewer countries, or a different unit.</div>`;
+  }
+}
+
+function buildSeries(parsed) {
+  const timeId = (parsed.dims.find(d => isTime(d.id)) || {}).id;
+  const keyDims = parsed.dims.filter(d => !isTime(d.id) && d.codes.length > 1);
+  const labelDims = keyDims.length ? keyDims : parsed.dims.filter(d => isGeo(d.id));
+  const map = new Map();
+  const periods = new Set();
+
+  for (const r of parsed.rows) {
+    const key = labelDims.map(d => r.dim[d.id]).join("|") || "value";
+    if (!map.has(key)) map.set(key, {
+      key,
+      label: labelDims.map(d => (d.labels[r.dim[d.id]] || r.dim[d.id])).join(" · ") || (parsed.label || "Value"),
+      geo: r.dim[(parsed.dims.find(d => isGeo(d.id)) || {}).id] || "",
+      points: new Map()
+    });
+    const t = timeId ? r.dim[timeId] : "—";
+    map.get(key).points.set(t, { v: r.v, flag: r.flag });
+    periods.add(t);
+  }
+  S.periods = [...periods].sort();
+  S.series = [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
+  S.series.forEach((s, i) => s.color = COLORS[i % COLORS.length]);
+  S.rows = parsed.rows;
+  S.hidden = new Set([...S.hidden].filter(k => map.has(k)));
+}
+
+/* ============================================================
+   views
+   ============================================================ */
+function renderView() {
+  const box = $("#viewArea");
+  if (!S.series.length) { box.innerHTML = `<div class="empty-note">No data for this combination.<br>Try another unit, indicator or period.</div>`; return; }
+  if (S.tab === "trend") drawTrend(box);
+  else if (S.tab === "compare") drawCompare(box);
+  else drawTable(box);
+}
+
+const visible = () => S.series.filter(s => !S.hidden.has(s.key));
+const unitLabel = () => {
+  const u = S.dims.find(d => /^unit$/i.test(d.id));
+  return u ? (u.labels[S.sel[u.id]] || S.sel[u.id]) : "";
+};
+
+function drawTrend(box) {
+  const W = 1000, H = 430, m = { t: 16, r: 20, b: 40, l: 66 };
+  const per = S.periods, ser = visible();
+  const xs = i => m.l + (per.length === 1 ? (W - m.l - m.r) / 2 : i * (W - m.l - m.r) / (per.length - 1));
+
+  let lo = Infinity, hi = -Infinity;
+  for (const s of ser) for (const p of s.points.values()) { if (p.v < lo) lo = p.v; if (p.v > hi) hi = p.v; }
+  if (!isFinite(lo)) { box.innerHTML = `<div class="empty-note">No numeric values in this selection.</div>`; return; }
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * 0.08; let y0 = lo - pad, y1 = hi + pad;
+  if (lo >= 0 && y0 < 0) y0 = 0;
+  const ticks = niceTicks(y0, y1, 6);
+  y0 = Math.min(y0, ticks[0]); y1 = Math.max(y1, ticks[ticks.length - 1]);
+  const ys = v => m.t + (H - m.t - m.b) * (1 - (v - y0) / (y1 - y0));
+
+  const step = Math.max(1, Math.ceil(per.length / 12));
+  const grid = ticks.map(t => `
+    <line x1="${m.l}" x2="${W - m.r}" y1="${ys(t).toFixed(1)}" y2="${ys(t).toFixed(1)}" stroke="${cssv("--line-soft")}" stroke-width="1"/>
+    <text x="${m.l - 9}" y="${(ys(t) + 4).toFixed(1)}" text-anchor="end" fill="${cssv("--txt-3")}" font-size="11">${fmtNum(t)}</text>`).join("");
+  const xlab = per.map((p, i) => (i % step === 0 || i === per.length - 1)
+    ? `<text x="${xs(i).toFixed(1)}" y="${H - m.b + 20}" text-anchor="middle" fill="${cssv("--txt-3")}" font-size="11">${esc(p)}</text>` : "").join("");
+
+  const paths = ser.map(s => {
+    let d = "", open = false;
+    per.forEach((p, i) => {
+      const pt = s.points.get(p);
+      if (!pt) { open = false; return; }
+      d += (open ? "L" : "M") + xs(i).toFixed(1) + " " + ys(pt.v).toFixed(1) + " ";
+      open = true;
+    });
+    const last = [...per].reverse().find(p => s.points.has(p));
+    const dots = per.length <= 40 ? per.map((p, i) => s.points.has(p)
+      ? `<circle cx="${xs(i).toFixed(1)}" cy="${ys(s.points.get(p).v).toFixed(1)}" r="2.6" fill="${s.color}"/>` : "").join("") : "";
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="chart-title">${esc(S.ds.title)}</div>
+    <div class="chart-sub">${esc(unitLabel())}${unitLabel() ? " · " : ""}${esc(per[0] || "")} – ${esc(per[per.length - 1] || "")}</div>
+    <svg class="chart" id="svgChart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+      ${grid}${xlab}
+      <line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${H - m.b}" stroke="${cssv("--line")}"/>
+      <line x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}" stroke="${cssv("--line")}"/>
+      ${paths}
+      <line id="guide" y1="${m.t}" y2="${H - m.b}" stroke="${cssv("--txt-3")}" stroke-dasharray="3 3" opacity="0"/>
+      <rect id="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/>
+    </svg>
+    ${legendHTML()}`;
+  bindLegend();
+
+  const svg = $("#svgChart"), guide = $("#guide"), tip = $("#tip");
+  $("#hit").addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect();
+    const x = (ev.clientX - r.left) / r.width * W;
+    let i = per.length === 1 ? 0 : Math.round((x - m.l) / ((W - m.l - m.r) / (per.length - 1)));
+    i = Math.max(0, Math.min(per.length - 1, i));
+    guide.setAttribute("x1", xs(i)); guide.setAttribute("x2", xs(i)); guide.setAttribute("opacity", ".7");
+    const rows = ser.map(s => ({ s, p: s.points.get(per[i]) })).filter(o => o.p)
+      .sort((a, b) => b.p.v - a.p.v);
+    tip.innerHTML = `<div class="th">${esc(per[i])}</div>` + rows.map(o =>
+      `<div class="tr"><span style="color:${o.s.color}">■</span>&nbsp;<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.s.label)}</span><b>${fmtNum(o.p.v)}${o.p.flag ? " " + esc(o.p.flag) : ""}</b></div>`).join("");
+    placeTip(ev);
+  });
+  $("#hit").addEventListener("mouseleave", () => { guide.setAttribute("opacity", "0"); $("#tip").style.opacity = 0; });
+}
+
+function drawCompare(box) {
+  const per = S.periods, ser = visible();
+  const latest = [...per].reverse().find(p => ser.some(s => s.points.has(p))) || per[per.length - 1];
+  const pick = $("#cmpPeriod") ? $("#cmpPeriod").value : latest;
+  const period = per.includes(pick) ? pick : latest;
+  const rows = ser.map(s => ({ s, p: s.points.get(period) })).filter(o => o.p)
+    .sort((a, b) => b.p.v - a.p.v);
+
+  const W = 1000, barH = 26, m = { t: 8, r: 60, b: 8, l: 210 };
+  const H = Math.max(120, m.t + m.b + rows.length * barH);
+  const vals = rows.map(o => o.p.v);
+  const max = Math.max(0, ...vals), min = Math.min(0, ...vals);
+  const span = (max - min) || 1;
+  const x0 = m.l + (0 - min) / span * (W - m.l - m.r);
+  const xw = v => Math.abs(v) / span * (W - m.l - m.r);
+
+  const bars = rows.map((o, i) => {
+    const y = m.t + i * barH + 3, h = barH - 8;
+    const w = xw(o.p.v), x = o.p.v >= 0 ? x0 : x0 - w;
+    const isAgg = AGG_RX.test(o.s.geo || "");
+    return `
+      <g>
+        <text x="${m.l - 12}" y="${y + h / 2 + 4}" text-anchor="end" fill="${cssv("--txt-2")}" font-size="12">${esc(clip(o.s.label, 34))}</text>
+        <rect x="${x.toFixed(1)}" y="${y}" width="${Math.max(1, w).toFixed(1)}" height="${h}" rx="4"
+              fill="${o.s.color}" opacity="${isAgg ? .55 : .92}"${isAgg ? ` stroke="${cssv("--gold")}" stroke-dasharray="3 2"` : ""}>
+          <title>${esc(o.s.label)}: ${fmtNum(o.p.v)}</title></rect>
+        <text x="${(o.p.v >= 0 ? x + w + 8 : x - 8).toFixed(1)}" y="${y + h / 2 + 4}"
+              text-anchor="${o.p.v >= 0 ? "start" : "end"}" fill="${cssv("--txt")}" font-size="11.5" font-weight="600">${fmtNum(o.p.v)}${o.p.flag ? `<tspan fill="${cssv("--txt-3")}"> ${esc(o.p.flag)}</tspan>` : ""}</text>
+      </g>`;
+  }).join("");
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div>
+        <div class="chart-title">${esc(S.ds.title)}</div>
+        <div class="chart-sub" style="margin:0">${esc(unitLabel())}</div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="field" style="min-width:150px">
+        <label>Period</label>
+        <select id="cmpPeriod">${per.map(p => `<option${p === period ? " selected" : ""}>${esc(p)}</option>`).join("")}</select>
+      </div>
+    </div>
+    ${rows.length ? `<svg class="chart" id="svgChart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <line x1="${x0.toFixed(1)}" x2="${x0.toFixed(1)}" y1="${m.t}" y2="${H - m.b}" stroke="${cssv("--line")}"/>
+      ${bars}
+    </svg>` : `<div class="empty-note">No values for ${esc(period)}.</div>`}
+    ${legendHTML()}`;
+  $("#cmpPeriod").onchange = () => drawCompare(box);
+  bindLegend();
+}
+const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
+
+function drawTable(box) {
+  const per = S.periods, ser = visible();
+  const cap = 400;
+  const head = `<tr><th>Series</th>${per.map(p => `<th style="text-align:right">${esc(p)}</th>`).join("")}</tr>`;
+  const body = ser.slice(0, cap).map(s => `
+    <tr><td>${esc(s.label)}</td>${per.map(p => {
+      const pt = s.points.get(p);
+      return `<td class="num">${pt ? fmtNum(pt.v) + (pt.flag ? ` <span style="color:var(--txt-3)">${esc(pt.flag)}</span>` : "") : "<span style='color:var(--txt-3)'>:</span>"}</td>`;
+    }).join("")}</tr>`).join("");
+  box.innerHTML = `
+    <div class="chart-title">${esc(S.ds.title)}</div>
+    <div class="chart-sub">${esc(unitLabel())} · ${ser.length} series × ${per.length} periods</div>
+    <div class="tablewrap"><table class="data"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+    ${ser.length > cap ? `<div class="warn">Showing the first ${cap} series — the CSV download contains all ${ser.length}.</div>` : ""}`;
+}
+
+function legendHTML() {
+  return `<div class="legend" id="legend">` + S.series.map(s => {
+    const last = [...S.periods].reverse().find(p => s.points.has(p));
+    return `<div class="li${S.hidden.has(s.key) ? " off" : ""}" data-k="${esc(s.key)}" title="Click to hide / show">
+      <span class="sw" style="background:${s.color}"></span>${esc(s.label)}
+      ${last ? `<span class="vv">${fmtNum(s.points.get(last).v)}</span>` : ""}</div>`;
+  }).join("") + `</div>`;
+}
+function bindLegend() {
+  $$("#legend .li").forEach(li => li.onclick = () => {
+    const k = li.dataset.k;
+    S.hidden.has(k) ? S.hidden.delete(k) : S.hidden.add(k);
+    renderView();
+  });
+}
+function niceTicks(lo, hi, n) {
+  const span = hi - lo || 1;
+  const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm >= 5 ? 10 : norm >= 2 ? 5 : norm >= 1 ? 2 : 1) * mag;
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out.length ? out : [lo, hi];
+}
+function placeTip(ev) {
+  const tip = $("#tip");
+  tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 16, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 10) x = ev.clientX - r.width - 16;
+  if (y + r.height > innerHeight - 10) y = innerHeight - r.height - 10;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+
+/* ============================================================
+   downloads
+   ============================================================ */
+function saveBlob(name, blob) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  note("Saved " + name);
+}
+const note = t => { const n = $("#dlNote"); if (!n) return; n.textContent = t; setTimeout(() => { if (n.textContent === t) n.textContent = ""; }, 3000); };
+const copy = (t, msg) => navigator.clipboard.writeText(t).then(() => note(msg)).catch(() => note("Copy failed — select the URL manually"));
+
+function tidyRows() {
+  const p = S.parsed; if (!p) return { head: [], rows: [] };
+  const dims = p.dims;
+  const head = [...dims.map(d => d.id), ...dims.filter(d => !isTime(d.id)).map(d => d.id + "_label"), "value", "flag"];
+  const rows = p.rows.map(r => [
+    ...dims.map(d => r.dim[d.id]),
+    ...dims.filter(d => !isTime(d.id)).map(d => d.labels[r.dim[d.id]] || ""),
+    r.v, r.flag
+  ]);
+  return { head, rows };
+}
+function downloadCSV() {
+  const { head, rows } = tidyRows();
+  if (!rows.length) return note("Nothing to download yet");
+  const q = v => { const s = String(v ?? ""); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = [head.join(","), ...rows.map(r => r.map(q).join(","))].join("\r\n");
+  saveBlob(`eurostat_${S.ds.code}_${S.from}_${S.to}.csv`, new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+}
+function downloadJSON() {
+  const { head, rows } = tidyRows();
+  if (!rows.length) return note("Nothing to download yet");
+  const payload = {
+    dataset: S.ds.code, title: S.ds.title, source: "Eurostat", api_query: S.lastURL,
+    retrieved: new Date().toISOString(), selection: S.sel, period: { from: S.from, to: S.to },
+    data: rows.map(r => Object.fromEntries(head.map((h, i) => [h, r[i]])))
+  };
+  saveBlob(`eurostat_${S.ds.code}.json`, new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+}
+function downloadPNG() {
+  const svg = $("#svgChart");
+  if (!svg) return note("Open the Trend or Compare tab first");
+  const clone = svg.cloneNode(true);
+  const vb = svg.viewBox.baseVal, scale = 2;
+  clone.setAttribute("width", vb.width * scale); clone.setAttribute("height", vb.height * scale);
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bg.setAttribute("width", "100%"); bg.setAttribute("height", "100%"); bg.setAttribute("fill", cssv("--card"));
+  clone.insertBefore(bg, clone.firstChild);
+  const src = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  img.onload = () => {
+    const cv = document.createElement("canvas");
+    cv.width = vb.width * scale; cv.height = vb.height * scale;
+    const cx = cv.getContext("2d");
+    cx.fillStyle = cssv("--card"); cx.fillRect(0, 0, cv.width, cv.height);
+    cx.drawImage(img, 0, 0);
+    cv.toBlob(b => saveBlob(`eurostat_${S.ds.code}_${S.tab}.png`, b), "image/png");
+  };
+  img.onerror = () => note("Could not render the chart image");
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(src);
+}
+
+/* ============================================================
+   favourites, hash state, boot
+   ============================================================ */
+function toggleFav() {
+  const favs = new Set(store.get("favs", []));
+  favs.has(S.ds.code) ? favs.delete(S.ds.code) : favs.add(S.ds.code);
+  store.set("favs", [...favs]); syncFavBtn();
+  if (S.showSaved) runSearch();
+}
+function syncFavBtn() {
+  const b = $("#btnSave"); if (!b || !S.ds) return;
+  const on = store.get("favs", []).includes(S.ds.code);
+  b.textContent = on ? "★ Saved" : "☆ Save";
+  b.classList.toggle("on", on);
+}
+function writeHash() {
+  if (!S.ds) return;
+  const p = new URLSearchParams({ ds: S.ds.code, tab: S.tab });
+  for (const d of S.dims) {
+    if (isTime(d.id)) continue;
+    const v = S.sel[d.id];
+    p.set(d.id, Array.isArray(v) ? v.join(",") : v);
+  }
+  if (S.from) p.set("from", S.from);
+  if (S.to) p.set("to", S.to);
+  history.replaceState(null, "", "#" + p);
+}
+function readHash() {
+  const h = location.hash.replace(/^#/, "");
+  if (!h) return null;
+  return Object.fromEntries(new URLSearchParams(h));
+}
+
+$("#q").addEventListener("input", debounce(() => { S.showSaved = false; $("#btnFav").classList.remove("on"); runSearch(); }, 130));
+$("#btnFav").onclick = () => {
+  S.showSaved = !S.showSaved;
+  $("#btnFav").classList.toggle("on", S.showSaved);
+  runSearch();
+};
+$("#btnTheme").onclick = () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next; store.set("theme", next);
+  COLORS.forEach((_, i) => COLORS[i] = cssv("--c" + (i + 1)));
+  S.series.forEach((s, i) => s.color = COLORS[i % COLORS.length]);
+  if (S.series.length) renderView();
+};
+addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== $("#q")) { e.preventDefault(); $("#q").focus(); }
+  if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; runSearch(); $("#q").blur(); }
+});
+
+(async function boot() {
+  document.documentElement.dataset.theme = store.get("theme", "dark");
+  COLORS.forEach((_, i) => COLORS[i] = cssv("--c" + (i + 1)));
+  $("#featured").innerHTML = FEATURED.map(f => `
+    <div class="fcard" data-c="${esc(f.c)}">
+      <span class="ic">${f.i}</span>
+      <div class="t">${esc(f.t)}</div>
+      <div class="d">${esc(f.d)}</div>
+    </div>`).join("");
+  $$("#featured .fcard").forEach(c => c.onclick = () => openDataset(c.dataset.c));
+
+  try {
+    await loadCatalog();
+    renderChips();
+    runSearch();
+    const h = readHash();
+    if (h && h.ds) openDataset(h.ds, h);
+  } catch (e) {
+    $("#results").innerHTML = `<div class="err">${esc(e.message)}</div>`;
+    $("#qcount").textContent = "catalogue unavailable";
+  }
+})();
+</script>
+</body>
+</html>
