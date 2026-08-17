@@ -20,7 +20,8 @@ serves the same file over `http://localhost:8931`.
 
 | | |
 |---|---|
-| **Search** | Type anything — `inflation`, `gdp`, `une_rt_m`, `renewable` — across 7,571 dataset titles and codes. Filter by theme with the chips. Press `/` to jump to the search box. |
+| **Browse** | The sidebar mirrors Eurostat's own data navigation tree — *Detailed datasets*, *Selected datasets*, *EU policies* and *Cross cutting topics*, with the same themes and folders underneath and a dataset count on every node. Expanded folders are remembered between visits. |
+| **Search** | Type anything — `inflation`, `gdp`, `une_rt_m`, `renewable` — across 7,571 dataset titles and codes. Press `/` to jump to the search box; "Show in tree" puts any dataset back in its place in the hierarchy. |
 | **Filter** | Every dataset's real dimensions (unit, indicator, age, sex, sector, …) are read from Eurostat's structure service, so the dropdowns always match the dataset. Pick countries individually or with the EU27 / Euro area / Big 5 / Nordics presets. |
 | **Chart** | *Trend over time* — multi-country line chart with a hover readout. *Compare countries* — ranked bar chart for any single period. *Data table* — the raw grid. Click a legend entry to hide a series. |
 | **Download** | **CSV** (tidy: one row per observation, codes *and* labels, plus the quality flag), **JSON** (with the exact API query used), and **chart PNG**. |

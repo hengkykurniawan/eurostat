@@ -63,15 +63,16 @@ for ($i = 1; $i -lt $lines.Count; $i++) {
     $de   = if ($f.Count -gt 6) { $f[6].Trim('"').Trim() } else { '' }
     $vals = 0
     if ($f.Count -gt 7) { [void][int64]::TryParse(($f[7].Trim('"').Trim()), [ref]$vals) }
+    $kind = if ($type -eq 'table') { 1 } else { 0 }   # 1 = "selected dataset" (table), 0 = detailed dataset
 
-    [void]$items.Add(@($code, $title, $themeIdx[$path], $upd, $ds, $de, $vals))
+    [void]$items.Add(@($code, $title, $themeIdx[$path], $upd, $ds, $de, $vals, $kind))
 }
 Write-Host ("  {0} datasets, {1} themes" -f $items.Count, $themes.Count)
 
 $json = ([ordered]@{
     built  = (Get-Date -Format 'yyyy-MM-dd')
     themes = @($themes)
-    fields = @('code', 'title', 'theme', 'updated', 'start', 'end', 'values')
+    fields = @('code', 'title', 'theme', 'updated', 'start', 'end', 'values', 'kind')
     items  = @($items)
 } | ConvertTo-Json -Depth 6 -Compress)
 

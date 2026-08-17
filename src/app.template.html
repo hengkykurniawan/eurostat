@@ -84,6 +84,39 @@ main{overflow:auto;min-width:0;padding:20px 22px 60px}
 .chip:hover{color:var(--txt);border-color:var(--txt-3)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .results{overflow:auto;flex:1;padding:6px 8px 20px}
+
+/* ---------- navigation tree ---------- */
+.modes{display:flex;gap:6px;padding:9px 14px;border-bottom:1px solid var(--line-soft)}
+.mode{
+  flex:1;text-align:center;font-size:12px;padding:6px 4px;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);color:var(--txt-2);cursor:pointer;transition:.15s
+}
+.mode:hover{color:var(--txt)}
+.mode.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+.tree{overflow:auto;flex:1;padding:8px 8px 26px}
+.tnode{
+  display:flex;align-items:center;gap:7px;padding:4px 7px;border-radius:8px;
+  cursor:pointer;font-size:12.5px;line-height:1.35;outline:1px solid transparent
+}
+.tnode:hover{background:var(--card)}
+.tnode.on{background:var(--card);outline-color:var(--accent)}
+.tnode.flash{animation:fl 1.5s ease-out}
+@keyframes fl{0%,40%{background:rgba(79,140,255,.22)}100%{background:transparent}}
+.tw{
+  width:13px;height:13px;flex:none;display:grid;place-items:center;font-size:11px;line-height:1;
+  color:var(--txt-3);border:1px solid var(--line);border-radius:3px;font-family:monospace
+}
+.tw.leafmark{border-color:transparent}
+.tico{flex:none;font-size:12px;color:var(--accent)}
+.tnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.troot>.tnm{font-weight:600}
+.tcount{margin-left:auto;font-size:10.5px;color:var(--txt-3);flex:none}
+.tleaf .tnm{color:var(--txt-2)}
+.tleaf.on .tnm,.tleaf:hover .tnm{color:var(--txt)}
+.tcode{
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:10px;color:var(--txt-3);
+  flex:none;margin-left:auto
+}
 .res{
   padding:9px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.12s
 }
@@ -230,7 +263,6 @@ table.data tr:hover td{background:var(--card-2)}
     <div>Eurostat Explorer<small>Live data from the EU statistical database</small></div>
   </div>
   <div class="spacer"></div>
-  <button class="tbtn" id="btnFav" title="Show saved datasets">☆ Saved</button>
   <button class="tbtn" id="btnTheme" title="Toggle light / dark">◐ Theme</button>
   <a class="tbtn" href="https://ec.europa.eu/eurostat/data/database" target="_blank" rel="noopener">Eurostat ↗</a>
 </header>
@@ -246,8 +278,13 @@ table.data tr:hover td{background:var(--card-2)}
       </div>
       <div class="hint"><span id="qcount">Loading catalogue…</span><span id="qbuilt"></span></div>
     </div>
-    <div class="chips" id="themeChips"></div>
-    <div class="results" id="results"></div>
+    <div class="modes">
+      <button class="mode on" data-mode="tree">🗂 Browse</button>
+      <button class="mode" data-mode="recent">🕘 Recent</button>
+      <button class="mode" data-mode="saved">★ Saved</button>
+    </div>
+    <div class="tree" id="tree"></div>
+    <div class="results" id="results" hidden></div>
   </aside>
 
   <main id="main">
@@ -297,8 +334,8 @@ const store = {
 
 /* ---------- state ---------- */
 const S = {
-  catalog: null, index: null, byCode: new Map(),
-  themeFilter: null, showSaved: false,
+  catalog: null, index: null, byCode: new Map(), all: [],
+  tree: [], placeOf: new Map(), expanded: new Set(), mode: "tree",
   ds: null,            // {code,title,updated,start,end,values,theme}
   dims: [],            // [{id,label,codes:[],labels:{}}]
   sel: {},             // dimId -> code | [codes] for geo
@@ -369,11 +406,12 @@ async function loadCatalog() {
   }
   const cat = JSON.parse(text);
   const seen = new Map();
-  for (const it of cat.items) {
-    const [code, title, theme, updated, start, end, values] = it;
-    if (seen.has(code)) continue;
-    seen.set(code, { code, title, theme: cat.themes[theme] || "", updated, start, end, values });
-  }
+  S.all = cat.items.map(it => {
+    const [code, title, theme, updated, start, end, values, kind] = it;
+    const rec = { code, title, path: cat.themes[theme] || "", updated, start, end, values, kind: kind || 0 };
+    if (!seen.has(code)) seen.set(code, rec);
+    return rec;
+  });
   S.catalog = cat;
   S.byCode = seen;
   S.index = [...seen.values()].map(d => ({ d, hay: (d.code + " " + d.title).toLowerCase() }));
@@ -381,36 +419,120 @@ async function loadCatalog() {
   $("#qbuilt").textContent = "catalogue " + cat.built;
 }
 
-function topThemes() {
-  const counts = new Map();
-  for (const { d } of S.index) {
-    const parts = d.theme.split(" > ");
-    const t = parts[1] || parts[0] || "Other";
-    counts.set(t, (counts.get(t) || 0) + 1);
+/* ============================================================
+   navigation tree — mirrors Eurostat's own data navigation tree
+   ============================================================ */
+const ROOTS = [
+  { label: "Detailed datasets",   under: "Database by themes",                        kind: 0 },
+  { label: "Selected datasets",   under: "Database by themes",                        kind: 1 },
+  { label: "EU policies",         under: "Cross cutting topics > Tables on EU policy" },
+  { label: "Cross cutting topics",under: "Cross cutting topics > Cross cutting topics" }
+];
+
+function buildTree() {
+  S.tree = [];
+  S.placeOf = new Map();   // dataset code -> the node it lives in
+  for (const spec of ROOTS) {
+    const root = { name: spec.label, depth: 0, kids: new Map(), items: [], count: 0, parent: null };
+    root.id = spec.label;
+    for (const it of S.all) {
+      if (spec.kind !== undefined && it.kind !== spec.kind) continue;
+      if (it.path !== spec.under && !it.path.startsWith(spec.under + " > ")) continue;
+      const segs = it.path.slice(spec.under.length).split(" > ").filter(Boolean);
+      let node = root;
+      root.count++;
+      for (const seg of segs) {
+        if (!node.kids.has(seg)) node.kids.set(seg, {
+          name: seg, depth: node.depth + 1, kids: new Map(), items: [], count: 0,
+          parent: node, id: node.id + " > " + seg
+        });
+        node = node.kids.get(seg);
+        node.count++;
+      }
+      node.items.push(it);
+      if (!S.placeOf.has(it.code)) S.placeOf.set(it.code, node);
+    }
+    if (root.count) S.tree.push(root);
   }
-  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, 9);
 }
 
-function renderChips() {
-  const box = $("#themeChips");
-  box.innerHTML = topThemes().map(([t, n]) =>
-    `<button class="chip${S.themeFilter === t ? " on" : ""}" data-t="${esc(t)}">${esc(shortTheme(t))} <span style="opacity:.6">${n}</span></button>`
-  ).join("");
-  $$(".chip", box).forEach(c => c.onclick = () => {
-    S.themeFilter = S.themeFilter === c.dataset.t ? null : c.dataset.t;
-    renderChips(); runSearch();
-  });
+function renderTree() {
+  const box = $("#tree");
+  box.innerHTML = "";
+  S.tree.forEach(root => box.appendChild(nodeEl(root)));
 }
-const shortTheme = t => t
-  .replace("General and regional statistics", "Regional")
-  .replace("Economy and finance", "Economy")
-  .replace("Population and social conditions", "Population")
-  .replace("Industry, trade and services", "Industry")
-  .replace("Agriculture, forestry and fisheries", "Agriculture")
-  .replace("International trade", "Trade")
-  .replace("Science, technology, digital society", "Science & tech")
-  .replace("Environment and energy", "Environment")
-  .replace("Transport", "Transport");
+
+function nodeEl(node) {
+  const wrap = document.createElement("div");
+  const open = S.expanded.has(node.id);
+  const row = document.createElement("div");
+  row.className = "tnode" + (node.depth === 0 ? " troot" : "");
+  row.style.paddingLeft = (6 + node.depth * 13) + "px";
+  row.title = `${node.name} — ${node.count.toLocaleString("en-GB")} dataset${node.count === 1 ? "" : "s"}`;
+  row.innerHTML =
+    `<span class="tw">${open ? "−" : "+"}</span>` +
+    `<span class="tico">${open ? "📂" : "📁"}</span>` +
+    `<span class="tnm">${esc(node.name)}</span>` +
+    `<span class="tcount">${node.count.toLocaleString("en-GB")}</span>`;
+  const kids = document.createElement("div");
+  kids.hidden = !open;
+  node.el = row; node.kidsEl = kids; node.filled = false;
+  if (open) fillKids(node);
+  row.onclick = () => toggleNode(node);
+  wrap.append(row, kids);
+  return wrap;
+}
+
+function fillKids(node) {
+  if (node.filled) return;
+  node.filled = true;
+  const frag = document.createDocumentFragment();
+  for (const child of node.kids.values()) frag.appendChild(nodeEl(child));
+  for (const it of node.items) {
+    const leaf = document.createElement("div");
+    leaf.className = "tnode tleaf" + (S.ds && S.ds.code === it.code ? " on" : "");
+    leaf.style.paddingLeft = (6 + (node.depth + 1) * 13) + "px";
+    leaf.dataset.c = it.code;
+    leaf.title = it.title + "  ·  " + it.code + (it.start ? `  ·  ${it.start}–${it.end}` : "");
+    leaf.innerHTML =
+      `<span class="tw leafmark">·</span><span class="tico" style="color:var(--txt-3)">📄</span>` +
+      `<span class="tnm">${esc(it.title)}</span><span class="tcode">${esc(it.code)}</span>`;
+    leaf.onclick = e => { e.stopPropagation(); openDataset(it.code); };
+    frag.appendChild(leaf);
+  }
+  node.kidsEl.appendChild(frag);
+}
+
+function toggleNode(node) {
+  const open = !S.expanded.has(node.id);
+  open ? S.expanded.add(node.id) : S.expanded.delete(node.id);
+  if (open) fillKids(node);
+  node.kidsEl.hidden = !open;
+  node.el.children[0].textContent = open ? "−" : "+";
+  node.el.children[1].textContent = open ? "📂" : "📁";
+  store.set("expanded", [...S.expanded].slice(0, 400));
+}
+
+/** open the tree at a dataset's folder and scroll to it */
+function revealInTree(code) {
+  const node = S.placeOf.get(code);
+  if (!node) return;
+  $("#q").value = "";          // otherwise search results stay in front of the tree
+  setMode("tree");
+  const chain = [];
+  for (let n = node; n; n = n.parent) chain.unshift(n);
+  for (const n of chain) {
+    S.expanded.add(n.id);
+    if (n.el) { fillKids(n); n.kidsEl.hidden = false; n.el.children[0].textContent = "−"; n.el.children[1].textContent = "📂"; }
+  }
+  store.set("expanded", [...S.expanded].slice(0, 400));
+  const leaf = $(`#tree .tleaf[data-c="${CSS.escape(code)}"]`);
+  if (leaf) {
+    leaf.scrollIntoView({ block: "center", behavior: "smooth" });
+    leaf.classList.add("flash");
+    setTimeout(() => leaf.classList.remove("flash"), 1600);
+  }
+}
 
 function scoreOf(d, hay, tokens, raw) {
   if (d.code === raw) return 1000;
@@ -426,37 +548,44 @@ function scoreOf(d, hay, tokens, raw) {
   return sc;
 }
 
+/** the sidebar shows the tree, a saved/recent list, or search results while typing */
+function setMode(m) {
+  S.mode = m;
+  $$(".mode").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  showPanel();
+}
+function showPanel() {
+  const searching = $("#q").value.trim().length > 0;
+  const treeVisible = !searching && S.mode === "tree";
+  $("#tree").hidden = !treeVisible;
+  $("#results").hidden = treeVisible;
+  if (searching) return runSearch();
+  if (S.mode === "tree") return;
+  const codes = store.get(S.mode === "saved" ? "favs" : "recent", []);
+  const list = codes.map(c => S.byCode.get(c)).filter(Boolean);
+  $("#results").innerHTML = list.length
+    ? `<div class="sec-title">${S.mode === "saved" ? "Saved" : "Recently opened"}</div>` + list.map(d => rowHTML(d)).join("")
+    : `<div class="empty-note">${S.mode === "saved"
+        ? "No saved datasets yet.<br>Open one and press ☆ Save."
+        : "Nothing opened yet.<br>Browse the tree or search above."}</div>`;
+  bindRows($("#results"));
+}
+
 function runSearch() {
   const raw = $("#q").value.trim().toLowerCase();
   const tokens = raw.split(/\s+/).filter(Boolean);
   const box = $("#results");
-  const favs = store.get("favs", []);
-
-  let list;
-  if (S.showSaved) {
-    list = favs.map(c => S.byCode.get(c)).filter(Boolean).map(d => ({ d, sc: 0 }));
-    if (!list.length) { box.innerHTML = `<div class="empty-note">No saved datasets yet.<br>Open one and press ☆ to save it.</div>`; return; }
-  } else if (!tokens.length && !S.themeFilter) {
-    const recents = store.get("recent", []).map(c => S.byCode.get(c)).filter(Boolean);
-    box.innerHTML =
-      (recents.length ? `<div class="sec-title">Recently opened</div>` + recents.slice(0, 6).map(rowHTML).join("") : "") +
-      `<div class="sec-title">Popular datasets</div>` +
-      FEATURED.map(f => S.byCode.get(f.c)).filter(Boolean).map(rowHTML).join("");
-    bindRows(box); return;
-  } else {
-    list = [];
-    for (const { d, hay } of S.index) {
-      if (S.themeFilter && !d.theme.includes(S.themeFilter)) continue;
-      const sc = tokens.length ? scoreOf(d, hay, tokens, raw) : 1 + Math.min(12, Math.log10(Math.max(10, d.values || 10)));
-      if (sc < 0) continue;
-      list.push({ d, sc });
-    }
-    list.sort((a, b) => b.sc - a.sc);
+  const list = [];
+  for (const { d, hay } of S.index) {
+    const sc = scoreOf(d, hay, tokens, raw);
+    if (sc < 0) continue;
+    list.push({ d, sc });
   }
+  list.sort((a, b) => b.sc - a.sc);
 
   const total = list.length;
   box.innerHTML =
-    `<div class="sec-title">${S.showSaved ? "Saved" : total.toLocaleString("en-GB") + " match" + (total === 1 ? "" : "es")}</div>` +
+    `<div class="sec-title">${total.toLocaleString("en-GB")} match${total === 1 ? "" : "es"}</div>` +
     (total ? list.slice(0, 300).map(x => rowHTML(x.d, tokens)).join("")
            : `<div class="empty-note">Nothing found.<br>Try fewer or different words.</div>`) +
     (total > 300 ? `<div class="empty-note" style="padding:14px">…${(total - 300).toLocaleString("en-GB")} more — refine your search</div>` : "");
@@ -578,11 +707,12 @@ function parseJsonStat(js) {
    dataset workspace
    ============================================================ */
 async function openDataset(code, fromHash) {
-  const d = S.byCode.get(code) || { code, title: code, theme: "", start: "", end: "", updated: "" };
+  const d = S.byCode.get(code) || { code, title: code, path: "", start: "", end: "", updated: "" };
   S.ds = d; S.dims = []; S.sel = {}; S.hidden = new Set();
   $("#hero").hidden = true; $("#ds").hidden = false;
   $("#main").scrollTop = 0;
   $$(".res").forEach(r => r.classList.toggle("on", r.dataset.c === code));
+  $$("#tree .tleaf").forEach(r => r.classList.toggle("on", r.dataset.c === code));
 
   const recent = [code, ...store.get("recent", []).filter(c => c !== code)].slice(0, 8);
   store.set("recent", recent);
@@ -599,7 +729,9 @@ async function openDataset(code, fromHash) {
         <a class="pill" href="https://ec.europa.eu/eurostat/databrowser/view/${encodeURIComponent(code)}/default/table"
            target="_blank" rel="noopener">Open on Eurostat ↗</a>
       </div>
-      ${d.theme ? `<div class="meta" style="margin-top:6px"><span style="opacity:.75">${esc(d.theme)}</span></div>` : ""}
+      ${d.path ? `<div class="meta" style="margin-top:6px">
+        <span style="opacity:.75">${esc(d.path)}</span>
+        <button class="tbtn" id="btnReveal" style="padding:2px 9px;font-size:11px">Show in tree</button></div>` : ""}
     </div>
     <div class="panel" id="ctrlPanel">
       <div class="skel" style="width:40%"></div><div class="skel" style="width:75%"></div><div class="skel" style="width:60%"></div>
@@ -607,6 +739,7 @@ async function openDataset(code, fromHash) {
     </div>`;
 
   $("#btnSave").onclick = toggleFav; syncFavBtn();
+  if ($("#btnReveal")) $("#btnReveal").onclick = () => revealInTree(code);
 
   try {
     const dims = await fetchDims(code);
@@ -1085,7 +1218,7 @@ function toggleFav() {
   const favs = new Set(store.get("favs", []));
   favs.has(S.ds.code) ? favs.delete(S.ds.code) : favs.add(S.ds.code);
   store.set("favs", [...favs]); syncFavBtn();
-  if (S.showSaved) runSearch();
+  if (S.mode === "saved") showPanel();
 }
 function syncFavBtn() {
   const b = $("#btnSave"); if (!b || !S.ds) return;
@@ -1111,12 +1244,8 @@ function readHash() {
   return Object.fromEntries(new URLSearchParams(h));
 }
 
-$("#q").addEventListener("input", debounce(() => { S.showSaved = false; $("#btnFav").classList.remove("on"); runSearch(); }, 130));
-$("#btnFav").onclick = () => {
-  S.showSaved = !S.showSaved;
-  $("#btnFav").classList.toggle("on", S.showSaved);
-  runSearch();
-};
+$("#q").addEventListener("input", debounce(showPanel, 130));
+$$(".mode").forEach(b => b.onclick = () => { $("#q").value = ""; setMode(b.dataset.mode); });
 $("#btnTheme").onclick = () => {
   const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = next; store.set("theme", next);
@@ -1126,7 +1255,7 @@ $("#btnTheme").onclick = () => {
 };
 addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== $("#q")) { e.preventDefault(); $("#q").focus(); }
-  if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; runSearch(); $("#q").blur(); }
+  if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; showPanel(); $("#q").blur(); }
 });
 
 (async function boot() {
@@ -1142,11 +1271,14 @@ addEventListener("keydown", e => {
 
   try {
     await loadCatalog();
-    renderChips();
-    runSearch();
+    buildTree();
+    S.expanded = new Set(store.get("expanded", ["Detailed datasets"]));
+    renderTree();
+    setMode("tree");
     const h = readHash();
     if (h && h.ds) openDataset(h.ds, h);
   } catch (e) {
+    $("#tree").hidden = true; $("#results").hidden = false;
     $("#results").innerHTML = `<div class="err">${esc(e.message)}</div>`;
     $("#qcount").textContent = "catalogue unavailable";
   }
