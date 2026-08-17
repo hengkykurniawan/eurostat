@@ -3,7 +3,9 @@
 A single-file dashboard for the [Eurostat database](https://ec.europa.eu/eurostat/data/database).
 Search every published dataset, filter it, chart it, and download the numbers.
 
-## Open it
+### ➜ [Open the live app](https://hengkykurniawan.github.io/eurostat/)
+
+## Open it locally
 
 Double-click **`start.bat`**, or just open `eurostat-dashboard.html` in your browser.
 
